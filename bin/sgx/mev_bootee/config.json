@@ -1,0 +1,1 @@
+{"server":{"tls":"", "body_limit":5000000, "workers":5}, "builder":{"chain_id": "11155111"}, "tx_hashcache_size":123, "tx_source":{}, "txpool_size": 5, "beacon_endpoint":""}
