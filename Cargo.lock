@@ -57,7 +57,6 @@ dependencies = [
  "serde 0.1.0",
  "serde_json 0.1.0",
  "sgxlib",
- "sgxlib-ra",
  "statedb",
 ]
 
@@ -131,12 +130,6 @@ dependencies = [
  "serde_json 0.1.0",
  "sgxlib",
 ]
-
-[[package]]
-name = "base16"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d27c3610c36aee21ce8ac510e6224498de4228ad772a171ed65643a24693a5a8"
 
 [[package]]
 name = "base64"
@@ -960,15 +953,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 
 [[package]]
-name = "memoffset"
-version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "043175f069eda7b85febe4a74abbaeff828d9f8b448515d3151a14a3542811aa"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
 name = "merlin"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1277,21 +1261,6 @@ dependencies = [
 
 [[package]]
 name = "rand_core"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a6fdeb83b075e8266dcc8762c22776f6877a63111121f5f8c7411e5be7eed4b"
-dependencies = [
- "rand_core 0.4.2",
-]
-
-[[package]]
-name = "rand_core"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c33a3c44ca05fa6f1807d8e6743f3824e8509beca625669633be0acbdf509dc"
-
-[[package]]
-name = "rand_core"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90bde5296fc891b0cef12a6d03ddccc162ce7b2aff54160af9338f8d40df6d19"
@@ -1315,15 +1284,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca3129af7b92a17112d59ad498c6f81eaf463253766b90396d39ea7a39d6613c"
 dependencies = [
  "rand_core 0.5.1",
-]
-
-[[package]]
-name = "rdrand"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5014f842b5515f60c15d3bca398477951f785883f73e7f9bc8a9d9c9bb6821c7"
-dependencies = [
- "rand_core 0.4.2",
 ]
 
 [[package]]
@@ -1723,14 +1683,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sgx_tkey_exchange"
-version = "1.1.4"
-source = "git+https://github.com/automata-network/incubator-teaclave-sgx-sdk?tag=v1.1.4#a1dd97696ce8dff0f3fceadaefb39af92f10d20c"
-dependencies = [
- "sgx_types",
-]
-
-[[package]]
 name = "sgx_tprotected_fs"
 version = "1.1.4"
 source = "git+https://github.com/automata-network/incubator-teaclave-sgx-sdk?tag=v1.1.4#a1dd97696ce8dff0f3fceadaefb39af92f10d20c"
@@ -1770,17 +1722,6 @@ version = "1.1.4"
 source = "git+https://github.com/automata-network/incubator-teaclave-sgx-sdk?tag=v1.1.4#a1dd97696ce8dff0f3fceadaefb39af92f10d20c"
 
 [[package]]
-name = "sgx_ucrypto"
-version = "1.1.4"
-source = "git+https://github.com/automata-network/incubator-teaclave-sgx-sdk?tag=v1.1.4#a1dd97696ce8dff0f3fceadaefb39af92f10d20c"
-dependencies = [
- "libc 0.2.150",
- "rand_core 0.3.1",
- "rdrand",
- "sgx_types",
-]
-
-[[package]]
 name = "sgx_unwind"
 version = "1.1.4"
 source = "git+https://github.com/automata-network/incubator-teaclave-sgx-sdk?tag=v1.1.4#a1dd97696ce8dff0f3fceadaefb39af92f10d20c"
@@ -1795,32 +1736,8 @@ source = "git+https://github.com/automata-network/sgxlib#e68957817bc285c19cb13c2
 dependencies = [
  "sgx_libc",
  "sgx_tcrypto",
- "sgx_tkey_exchange",
  "sgx_tstd",
  "sgx_types",
- "sgx_ucrypto",
-]
-
-[[package]]
-name = "sgxlib-ra"
-version = "0.1.0"
-source = "git+https://github.com/automata-network/sgxlib-ra#a6acb235a488c441913fc8392a886cc83ed52e17"
-dependencies = [
- "base",
- "base16",
- "base64 0.1.0",
- "crypto",
- "eth_types",
- "glog",
- "jsonrpc",
- "memoffset",
- "net-http",
- "rustls 0.1.0",
- "serde 0.1.0",
- "serde_json 0.1.0",
- "sgxlib",
- "solidity",
- "webpki 0.1.0",
 ]
 
 [[package]]
@@ -1839,16 +1756,6 @@ dependencies = [
  "digest 0.8.1",
  "fake-simd",
  "opaque-debug 0.2.3",
-]
-
-[[package]]
-name = "solidity"
-version = "0.1.0"
-source = "git+https://github.com/automata-network/solidity-rs#7cc988a56bb9430a80e0853b68fb1b58e9d12040"
-dependencies = [
- "crypto",
- "eth_types",
- "sgxlib",
 ]
 
 [[package]]
@@ -2380,6 +2287,16 @@ dependencies = [
  "quote 1.0.33",
  "syn 2.0.39",
 ]
+
+[[patch.unused]]
+name = "sgx_tkey_exchange"
+version = "1.1.4"
+source = "git+https://github.com/automata-network/incubator-teaclave-sgx-sdk?tag=v1.1.4#a1dd97696ce8dff0f3fceadaefb39af92f10d20c"
+
+[[patch.unused]]
+name = "sgx_ucrypto"
+version = "1.1.4"
+source = "git+https://github.com/automata-network/incubator-teaclave-sgx-sdk?tag=v1.1.4#a1dd97696ce8dff0f3fceadaefb39af92f10d20c"
 
 [[patch.unused]]
 name = "sgx_urts"

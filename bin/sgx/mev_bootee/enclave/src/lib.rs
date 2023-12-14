@@ -16,7 +16,7 @@ use std::sgx_trts;
 use std::sgx_types::sgx_status_t;
 
 lazy_static::lazy_static! {
-    static ref APP: MevBooTEE = MevBooTEE::default();
+    static ref APP: MevBooTEE = MevBooTEE::new();
 }
 
 #[no_mangle]

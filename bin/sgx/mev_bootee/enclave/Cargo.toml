@@ -1,5 +1,5 @@
 [package]
-name = "bootee-enclave"
+name = "mev-bootee-enclave"
 version = "0.1.0"
 authors = [ "BooTEE Authors" ]
 edition = "2018"
@@ -25,7 +25,7 @@ serde_json = { git = "https://github.com/automata-network/sgxlib-thirdparty", de
 lazy_static = { version = "1.4.0", default-features = false, features = ["spin_no_std"] }
 
 [lib]
-name = "bootee_enclave"
+name = "mev_bootee_enclave"
 crate-type = [ "staticlib" ]
 
 [build-dependencies]
