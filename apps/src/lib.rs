@@ -143,11 +143,11 @@ pub struct AppEnv {
 pub fn run_enclave<A: App, T: Deref<Target = A>>(
     app: &T,
     enclave_id: u64,
-    args: *const c_char,
+    args: Vec<String>,
 ) -> Result<(), ExitStatus> {
     app.run(AppEnv {
         enclave_id,
-        args: parse_args(args),
+        args,
     })
     .map_err(|err| {
         glog::error!("app exit by {}", err);

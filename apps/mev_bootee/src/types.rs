@@ -57,9 +57,9 @@ pub enum MevBooTEEError {
     IllegalBundle
 }
 
-#[derive(Deserialize)]
+#[derive(Clone, Deserialize)]
 pub enum PartialBlockBuildingMode {
-    MevBooTEE,
-    PEPCTEE,
-    MevBooTEEPEPCTEE
+    BuilderProposes,
+    ProposerProposes,
+    ProposerChosesWhoProposes
 }

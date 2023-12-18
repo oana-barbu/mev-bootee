@@ -5,9 +5,9 @@ use std::sync::{Arc, mpsc::{channel, Sender}, Mutex};
 use serde::{Deserialize, Serialize};
 use jsonrpc::{JsonrpcErrorObj, RpcArgs};
 
-use eth_types::BlockHeader;
+use eth_types::{BlockHeader, Block};
 
-use crate::{Bid, RoundEnv, Bundle, Transaction};
+use crate::{Bid, RoundEnv, Transaction};
 
 #[derive(Deserialize)]
 pub struct SubmitBundleRequest {
@@ -58,11 +58,32 @@ pub struct SignedHeader {
 
 }
 
+impl SignedHeader {
+    pub fn verify(&self, env: &RoundEnv) -> bool {
+        // check signature belongs to proposer and is correct
+        todo!()
+    }
+}
+
+#[derive(Deserialize)]
+pub struct SignedPartialBlockHeader {
+
+}
+
+impl SignedPartialBlockHeader {
+    pub fn verify(&self, env: &RoundEnv) -> bool {
+        // check signature belongs to proposer and is correct
+        // check proposer is enrolled in EigenLayer and can be slashed
+        todo!()
+    }
+}
+
 pub enum JsonRpcServerMsg {
     SubmitBundle(SubmitBundleRequest, Sender<Result<String, JsonrpcErrorObj>>),
     CancelBundle(String, Sender<bool>),
     GetBlockOffer(GetBlockOfferRequest, Sender<Result<BlockHeaderOffer, JsonrpcErrorObj>>),
-    SubmitSignedHeader(SignedHeader, Sender<bool>)
+    SubmitSignedHeader(SignedHeader, Sender<Result<bool, JsonrpcErrorObj>>),
+    SubmitSignedPartialBlockHeader(SignedPartialBlockHeader, Sender<Result<Block, JsonrpcErrorObj>>)
 }
 
 pub struct MevBooTEEAPI {
@@ -97,7 +118,13 @@ impl MevBooTEEAPI {
         let signed_header = args.params;
         let (sender, receiver) = channel();
         self.sender.lock().unwrap().send(JsonRpcServerMsg::SubmitSignedHeader(signed_header, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
-        let header = receiver.recv().map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
-        Ok(header)
+        receiver.recv().map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?
+    }
+
+    pub fn commit_to_partial_block(&self, args: RpcArgs<SignedPartialBlockHeader>) -> Result<Block, JsonrpcErrorObj> {
+        let signed_pbh = args.params;
+        let (sender, receiver) = channel();
+        self.sender.lock().unwrap().send(JsonRpcServerMsg::SubmitSignedPartialBlockHeader(signed_pbh, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
+        receiver.recv().map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?
     }
 }

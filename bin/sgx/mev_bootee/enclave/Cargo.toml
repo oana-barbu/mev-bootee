@@ -14,8 +14,8 @@ default = []
 
 [dependencies]
 sgxlib = { git = "https://github.com/automata-network/sgxlib", default-features = false, features = ["tstd", "types", "trts"] }
-apps = { path = "../../../../src/apps", default-features = false, features = ["tstd"] }
-app-mev-bootee = { path = "../../../../src/apps/mev_bootee", default-features = false, features = ["tstd"] }
+apps = { path = "../../../../apps", default-features = false, features = ["tstd"] }
+app-mev-bootee = { path = "../../../../apps/mev_bootee", default-features = false, features = ["tstd"] }
 
 glog = { git = "https://github.com/automata-network/glog-rs", default-features = false, features = ["tstd"] }
 
