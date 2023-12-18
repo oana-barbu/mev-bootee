@@ -136,7 +136,6 @@ pub fn terminate<A: App, T: Deref<Target = A>>(app: &T) {
 #[derive(Clone, Debug)]
 pub struct AppEnv {
     pub enclave_id: u64,
-
     pub args: Vec<String>,
 }
 

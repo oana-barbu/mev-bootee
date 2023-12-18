@@ -8,7 +8,7 @@
 #[macro_use]
 extern crate sgxlib as std;
 
-use app_mev_bootee::MevBooTEE;
+use app_mev_bootee::{MevBooTEE, GreedyOrderFlow, PartialBlockBuildingMode};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::prelude::v1::*;
@@ -16,7 +16,12 @@ use std::sgx_trts;
 use std::sgx_types::sgx_status_t;
 
 lazy_static::lazy_static! {
-    static ref APP: MevBooTEE = MevBooTEE::new();
+    static ref PARTIAL_BLOCK_BUILDING_MODE: PartialBlockBuildingMode = {
+        let mode_str = env!("PARTIAL_BLOCK_BUILDING_MODE");
+        let mode = serde_json::from_str(mode_str).unwrap();
+        mode
+    };
+    static ref APP: MevBooTEE<GreedyOrderFlow> = MevBooTEE::new(*PARTIAL_BLOCK_BUILDING_MODE);
 }
 
 #[no_mangle]

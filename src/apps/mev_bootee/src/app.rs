@@ -3,208 +3,21 @@ use std::{prelude::v1::*, sync::Mutex};
 use apps::AppEnv;
 use base::trace::Alive;
 
-use eth_types::SH160;
-
-use jsonrpc::{RpcArgs, RpcServer, JsonrpcErrorObj, RpcServerConfig};
-use serde::{Deserialize, Serialize};
+use jsonrpc::{RpcServer, JsonrpcErrorObj, RpcServerConfig};
 use std::sync::mpsc::{Sender, channel, Receiver};
 
 use std::sync::Arc;
-use std::collections::{BTreeMap, BTreeSet};
+
+use crate::{OrderFlow, MevBooTEEAPI, JsonRpcServerMsg, SubmitBundleRequest, BlockHeaderOffer, SignedHeader, GetBlockOfferRequest, PartialBlockBuildingMode};
 
 type Validator = String; // TODO
 
-const MAX_GAS_COST: u32 = 3_000_000;
-
-// state after executing a bundle
-#[derive(Clone)]
-pub struct ExecutionState {
-
-}
-
-pub trait OrderFlow {
-    fn add_bundle(&mut self, bundle_id: String, bundle: Bundle);
-    fn remove_bundle(&mut self, bundle_id: String);
-    fn add_inclusion_list(&mut self, inclusion_list: Vec<Transaction>);
-}
-
-pub struct GreedyOrderFlow {
-    pub starting_state: ExecutionState,
-    pub ordered_bundle_ids: Vec<String>,
-    pub inclusion_list: Vec<Transaction>,
-    pub all_bundles: BTreeMap<String, Bundle>,
-    pub block: Vec<String>
-}
-
-impl GreedyOrderFlow {
-    // to be run after we add new bundles to ensure the block is still valid
-    fn rebuild(&mut self) {
-        self.block = Vec::new();
-        if self.ordered_bundle_ids.len() == 0 {
-            return
-        }
-        // the tob is fixed
-        let tob = self.ordered_bundle_ids[0].clone();
-        
-        let mut state = self.starting_state.clone();
-        self.execute_bundle(&tob, &mut state);
-        self.block.push(tob);
-        for b in self.ordered_bundle_ids[1..].into_iter() {
-            if self.execute_bundle(b, &mut state) {
-                self.block.push(b.clone());
-            }
-        }
-        
-    }
-
-    // return true if bundle is valid with the current state
-    // if bundle conflicts, it restores state to what it was
-    fn execute_bundle(&self, bundle_id: &String, execution_state: &mut ExecutionState) -> bool {
-        todo!()
-    }
-
-    fn add_bundle_id(&mut self, bundle_id: &String, bundle_value: u32) {
-        for i in 0..self.ordered_bundle_ids.len() {
-            if self.all_bundles[&self.ordered_bundle_ids[i]].value() < bundle_value {
-                self.ordered_bundle_ids.insert(i, bundle_id.into());
-                return
-            }
-        }
-        self.ordered_bundle_ids.push(bundle_id.into())
-    }
-}
-
-impl OrderFlow for GreedyOrderFlow {
-    fn add_bundle(&mut self, bundle_id: String, bundle: Bundle) {
-        self.add_bundle_id(&bundle_id, bundle.value());
-        self.rebuild()
-    }
-
-    fn remove_bundle(&mut self, bundle_id: String) {
-        self.all_bundles.remove(&bundle_id);
-        for i in 0..self.ordered_bundle_ids.len() {
-            if self.ordered_bundle_ids[i] == bundle_id {
-                self.ordered_bundle_ids.remove(i);
-                return
-            }
-        }
-    }
-
-    fn add_inclusion_list(&mut self, inclusion_list: Vec<Transaction>) {
-        todo!()
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct Transaction {
-    pub raw: String,
-    pub estimated_gas_cost: u32,
-}
-
-#[derive(Clone)]
-pub struct Bundle {
-    pub searcher: SH160,
-    pub bid: Bid,
-    pub txns: Vec<Transaction>,
-    pub estimated_tip: u32,
-    pub estimated_gas_cost: u32
-}
-
-impl Bundle {
-    // returns the value of the bundle (probably the estimated_tip in this case)
-    fn value(&self) -> u32 {
-        todo!()
-    }
-
-    fn cost(&self) -> u32 {
-        return self.estimated_gas_cost
-    }
-}
-
-pub struct Block {
-    pub tob: Bundle,
-    pub rob: Vec<Bundle>,
-    pub inclusion_list: Vec<Transaction>
-}
-
-pub enum JsonRpcServerMsg {
-    SubmitBundle(SubmitBundleRequest, Sender<String>),
-    CancelBundle(String, Sender<bool>),
-    GetBlockOffer(Vec<String>, Sender<BlockHeaderOffer>),
-    SubmitSignedHeader(SignedHeader, Sender<bool>)
-}
-
-#[derive(Clone, Deserialize)]
-pub enum BidType {
-    TopOfBlock,
-    RestOfBlock
-}
-
-#[derive(Clone, Deserialize)]
-pub struct Bid {
-    pub ty: BidType,
-    pub value: u32,
-}
-
-#[derive(Deserialize)]
-pub struct SubmitBundleRequest {
-    pub txns: Vec<String>,
-    pub bid: Bid
-}
-
-pub struct MevBooTEEAPI {
-    pub sender: Arc<Mutex<Sender<JsonRpcServerMsg>>>
-}
-
-#[derive(Serialize)]
-pub struct BlockHeaderOffer {
-
-}
-
-#[derive(Deserialize)]
-pub struct SignedHeader {
-
-}
-
-impl MevBooTEEAPI {
-    pub fn submit_bundle(&self, args: RpcArgs<SubmitBundleRequest>) -> Result<String, JsonrpcErrorObj> {
-        let req = args.params;
-        let (sender, receiver) = channel();
-        self.sender.lock().unwrap().send(JsonRpcServerMsg::SubmitBundle(req, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
-        let bundle_id = receiver.recv().map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
-        Ok(bundle_id)
-    }
-
-    pub fn cancel_bundle(&self, args: RpcArgs<String>) -> Result<bool, JsonrpcErrorObj> {
-        let bundle_id = args.params;
-        let (sender, receiver) = channel();
-        self.sender.lock().unwrap().send(JsonRpcServerMsg::CancelBundle(bundle_id, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
-        let removed = receiver.recv().map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
-        Ok(removed)
-    }
-
-    pub fn get_block_offer(&self, args: RpcArgs<Vec<String>>) -> Result<BlockHeaderOffer, JsonrpcErrorObj> {
-        // TODO: here, the argument could be signed and we could verify if the submitter is indeed the block proposer
-        let transactions = args.params;
-        let (sender, receiver) = channel();
-        self.sender.lock().unwrap().send(JsonRpcServerMsg::GetBlockOffer(transactions, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
-        let header = receiver.recv().map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
-        Ok(header)
-    }
-
-    pub fn submit_signed_header(&self, args: RpcArgs<SignedHeader>) -> Result<bool, JsonrpcErrorObj> {
-        let signed_header = args.params;
-        let (sender, receiver) = channel();
-        self.sender.lock().unwrap().send(JsonRpcServerMsg::SubmitSignedHeader(signed_header, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
-        let header = receiver.recv().map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
-        Ok(header)
-    }
-}
-
-pub struct MevBooTEE {
+pub struct MevBooTEE<T: OrderFlow> {
     pub alive: Alive,
     pub srv_receiver: Mutex<Receiver<JsonRpcServerMsg>>,
-    pub srv_sender: Arc<Mutex<Sender<JsonRpcServerMsg>>>
+    pub srv_sender: Arc<Mutex<Sender<JsonRpcServerMsg>>>,
+    pub order_flow: Mutex<T>,
+    pub mode: PartialBlockBuildingMode
 }
 
 pub struct RoundEnv {
@@ -212,19 +25,16 @@ pub struct RoundEnv {
     pub proposer: Validator,
 }
 
-pub struct RoundStore {
-    pub bundles: Vec<Bundle>,
-    pub inclusion_list: Vec<Transaction>,
-    pub block: Block,
-}
-
-impl MevBooTEE {
-    pub fn new() -> Self {
+impl<T: OrderFlow> MevBooTEE<T> {
+    pub fn new(mode: PartialBlockBuildingMode) -> Self {
         let (sender, receiver) = channel();
+        let es = todo!();
         Self {
             alive: Alive::new(),
             srv_receiver: Mutex::new(receiver),
             srv_sender: Arc::new(Mutex::new(sender)),
+            order_flow: Mutex::new(T::new(es)),
+            mode: mode,
         }
     }
 
@@ -240,8 +50,8 @@ impl MevBooTEE {
                 Ok(msg) => {
                     match msg {
                         JsonRpcServerMsg::SubmitBundle(bundle, sender) => self.handle_submit_bundle_request(bundle, sender, &round_env),
-                        JsonRpcServerMsg::CancelBundle(bundle_id, sender) => self.handle_cancel_bundle_request(bundle_id, sender),
-                        JsonRpcServerMsg::GetBlockOffer(txns, sender) => self.handle_get_block_offer(txns, sender),
+                        JsonRpcServerMsg::CancelBundle(bundle_id, sender) => self.handle_cancel_bundle_request(&bundle_id, sender),
+                        JsonRpcServerMsg::GetBlockOffer(request, sender) => self.handle_get_block_offer(request, sender, &round_env),
                         JsonRpcServerMsg::SubmitSignedHeader(signed_header, sender) => self.handle_submit_signed_header(signed_header, sender),
                     }
                 },
@@ -254,7 +64,7 @@ impl MevBooTEE {
         todo!()
     }
 
-    pub fn run(&self) {
+    pub fn start(&self) {
         glog::info!("running MEV-BooTEE");
 
         let rpc_srv_handle = base::thread::spawn("jsonrpc-server".into(), {
@@ -279,35 +89,75 @@ impl MevBooTEE {
         rpc_srv_handle.join().expect("failed to join RPC server");
     }
 
-    fn handle_submit_bundle_request(&self, bundle: SubmitBundleRequest, sender: Sender<String>, env: &RoundEnv) {
+    fn handle_submit_bundle_request(&self, bundle_request: SubmitBundleRequest, sender: Sender<Result<String, JsonrpcErrorObj>>, env: &RoundEnv) {
+        if !bundle_request.verify(env) {
+            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: bundle param invalid".into()))) {
+                glog::error!("unable to send on channel back: {:?}", e);
+            }
+            return;
+        }
+        let transactions = bundle_request.into_tarnsactions();
+        let bundle = match self.order_flow.lock().unwrap().create_bundle(transactions) {
+            Ok(bundle) => bundle,
+            Err(e) => {
+                if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: invalid bundle".into()))) {
+                    glog::error!("unable to send on channel back: {:?}", e);
+                }
+                return
+            }
+        };
         let mut random = [0_u8; 32];
         crypto::read_rand(&mut random);
         let bundle_id = std::str::from_utf8(&random[..]).unwrap();
-        if let Err(e) = sender.send(bundle_id.into()) {
+        if let Err(e) = sender.send(Ok(bundle_id.into())) {
             glog::error!("unable to send bundle_id back: {:?}", e);
             return; // the request cannot be completed so it's pointless to add the bundle
         }
-        // TODO: add the bundle and build the block
+        self.order_flow.lock().unwrap().add_bundle(bundle_id.into(), bundle)
     }
 
-    fn handle_cancel_bundle_request(&self, bundle_id: String, sender: Sender<bool>) {
-        todo!()
-        // TODO: remove bundle from the current block
+    fn handle_cancel_bundle_request(&self, bundle_id: &String, sender: Sender<bool>) {
+        let removed = self.order_flow.lock().unwrap().remove_bundle(bundle_id);
+        if let Err(e) = sender.send(removed) {
+            glog::error!("unable to send on channel back: {:?}", e);
+        }
     }
 
-    fn handle_get_block_offer(&self, proposer_txns: Vec<String>, sender: Sender<BlockHeaderOffer>) {
-        todo!()
+    fn handle_get_block_offer(&self, request: GetBlockOfferRequest, sender: Sender<Result<BlockHeaderOffer, JsonrpcErrorObj>>, env: &RoundEnv) {
+        if !request.verify(env) {
+            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: get block offer request invalid".into()))) {
+                glog::error!("unable to send on channel back: {:?}", e);
+            }
+            return;
+        }
+        let transactions = request.into_transactions();
+        match self.order_flow.lock().unwrap().create_bundle(transactions.clone()) {
+            Ok(_) => {},
+            Err(e) => {
+                if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: invalid bundle".into()))) {
+                    glog::error!("unable to send on channel back: {:?}", e);
+                }
+                return
+            }
+        };
+        self.order_flow.lock().unwrap().add_inclusion_list(transactions);
+        let header = self.order_flow.lock().unwrap().get_block_header();
+        let offer = BlockHeaderOffer::new(&header);
+        if let Err(e) = sender.send(Ok(offer)) {
+            glog::error!("unable to send offer: {:?}", e);
+        }
     }
 
     fn handle_submit_signed_header(&self, signed_header: SignedHeader, sender: Sender<bool>) {
+        // here, we either return the block to the requester, or we release the block ourselves
         todo!()
     }
 }
 
-impl apps::App for MevBooTEE {
+impl<T: OrderFlow> apps::App for MevBooTEE<T> {
     fn run(&self, args: AppEnv) -> Result<(), String> {
         glog::info!("running app");
-        self.run();
+        self.start();
         Ok(())
     }
 
