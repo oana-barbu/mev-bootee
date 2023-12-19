@@ -8,21 +8,33 @@
 #[macro_use]
 extern crate sgxlib as std;
 
-use app_mev_bootee::MevBooTEE;
+use app_mev_bootee::{MevBooTEE, GreedyOrderFlow, PartialBlockBuildingMode};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::prelude::v1::*;
 use std::sgx_trts;
 use std::sgx_types::sgx_status_t;
+use std::sync::Mutex;
 
 lazy_static::lazy_static! {
-    static ref APP: MevBooTEE = MevBooTEE::default();
+    static ref PARTIAL_BLOCK_BUILDING_MODE: Mutex<Option<PartialBlockBuildingMode>> = Mutex::new(None);
+    static ref APP: MevBooTEE<GreedyOrderFlow> = {
+        let mode = match &*PARTIAL_BLOCK_BUILDING_MODE.lock().unwrap() {
+            Some(m) => m.clone(),
+            None => panic!("partial block building mode must be set!"),
+        };
+        MevBooTEE::new(mode)
+    };
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn enclave_entrypoint(eid: u64, args: *const c_char) -> sgx_status_t {
     glog::init();
     glog::info!("Initialize Enclave!");
+
+    let args = apps::parse_args(args);
+    let mode = todo!(); // get mode from args
+    *PARTIAL_BLOCK_BUILDING_MODE.lock().unwrap() = Some(mode);
     match apps::run_enclave(&APP, eid, args) {
         Ok(()) => sgx_status_t::SGX_SUCCESS,
         Err(err) => err,

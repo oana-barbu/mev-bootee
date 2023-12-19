@@ -6,8 +6,8 @@
 
 [workspace]
 members = [
-    "src/apps",
-    "src/apps/mev_bootee",
+    "apps",
+    "apps/mev_bootee",
 ]
 
 [patch.'https://github.com/apache/teaclave-sgx-sdk.git']
