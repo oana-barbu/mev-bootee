@@ -26,7 +26,7 @@ pub struct GreedyOrderFlow {
 
 impl GreedyOrderFlow {
     // to be run:
-    // 1. after we add new bundles to ensure the block is still maximized
+    // 1. after we add new bundles or remvoe existing bundles to ensure the block is still maximized
     // 2. after an inclusion list is added to ensure the block is still valid
     fn rebuild(&mut self) {
         self.block = Vec::new();
@@ -93,6 +93,7 @@ impl OrderFlow for GreedyOrderFlow {
         for i in 0..self.ordered_bundle_ids.len() {
             if self.ordered_bundle_ids[i] == bundle_id.to_string() {
                 self.ordered_bundle_ids.remove(i);
+                self.rebuild(); // TODO: we can rebuild from the index of the removed bundle
                 return true
             }
         }

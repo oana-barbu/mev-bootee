@@ -86,7 +86,7 @@ impl<T: OrderFlow> MevBooTEE<T> {
                     // proposer commits to the partial block built by BooTEE
                     srv.jsonrpc("commit_to_partial_block", MevBooTEEAPI::commit_to_partial_block);
                 },
-                PartialBlockBuildingMode::ProposerChosesWhoProposes => {
+                PartialBlockBuildingMode::ProposerChooses => {
                     // the proposer can choose whether to sign the header and let the builder propose
                     // or commit to the partial block built by the builder
                     srv.jsonrpc("submit_signed_header", MevBooTEEAPI::submit_signed_header);
@@ -114,7 +114,7 @@ impl<T: OrderFlow> MevBooTEE<T> {
             }
             return;
         }
-        let transactions = bundle_request.into_tarnsactions();
+        let transactions = bundle_request.into_transactions();
         let bundle = match self.order_flow.lock().unwrap().create_bundle(transactions) {
             Ok(bundle) => bundle,
             Err(e) => {
@@ -168,9 +168,10 @@ impl<T: OrderFlow> MevBooTEE<T> {
 
     fn handle_submit_signed_header(&self, signed_header: SignedHeader, sender: Sender<Result<bool, JsonrpcErrorObj>>, env: &RoundEnv) {
         // we release the block ourselves
-        if !signed_header.verify(env) {
-            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: submit signed header invalid".into()))) {
-                glog::error!("unable to send on channel back: {:?}", e);
+        if let Err(e) = signed_header.verify(env) {
+            let msg = format!("{:?}", e);
+            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client(msg))) {
+                glog::error!("unable to send response on channel: {:?}", e);
             }
             return;
         }
@@ -182,9 +183,10 @@ impl<T: OrderFlow> MevBooTEE<T> {
 
     fn handle_submit_signed_partial_block_header(&self, signed_partial_block_header: SignedPartialBlockHeader, sender: Sender<Result<Block, JsonrpcErrorObj>>, env: &RoundEnv) {
         // we return block to proposer
-        if !signed_partial_block_header.verify(env) {
-            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: submit signed partial block header invalid".into()))) {
-                glog::error!("unable to send on channel back: {:?}", e);
+        if let Err(e) = signed_partial_block_header.verify(env) {
+            let msg = format!("{:?}", e);
+            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client(msg))) {
+                glog::error!("unable to send on channel: {:?}", e);
             }
             return;
         }

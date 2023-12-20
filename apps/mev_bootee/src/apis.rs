@@ -7,7 +7,7 @@ use jsonrpc::{JsonrpcErrorObj, RpcArgs};
 
 use eth_types::{BlockHeader, Block};
 
-use crate::{Bid, RoundEnv, Transaction};
+use crate::{Bid, RoundEnv, Transaction, MevBooTEEError};
 
 #[derive(Deserialize)]
 pub struct SubmitBundleRequest {
@@ -20,7 +20,7 @@ impl SubmitBundleRequest {
         todo!()
     }
 
-    pub fn into_tarnsactions(&self) -> Vec<Transaction> {
+    pub fn into_transactions(&self) -> Vec<Transaction> {
         todo!()
     }
 }
@@ -55,24 +55,30 @@ impl BlockHeaderOffer {
 
 #[derive(Deserialize)]
 pub struct SignedHeader {
-
+    header: Vec<u8>,
+    signature: Vec<u8>
 }
 
 impl SignedHeader {
-    pub fn verify(&self, env: &RoundEnv) -> bool {
-        // check signature belongs to proposer and is correct
+    pub fn verify(&self, env: &RoundEnv) -> Result<(), MevBooTEEError> {
+        // recover public key from bls signature
+        // check public key belongs to current proposer
+        // check the header is valid
         todo!()
     }
 }
 
 #[derive(Deserialize)]
 pub struct SignedPartialBlockHeader {
-
+    partial_block_header: Vec<u8>,
+    signature: Vec<u8>
 }
 
 impl SignedPartialBlockHeader {
-    pub fn verify(&self, env: &RoundEnv) -> bool {
-        // check signature belongs to proposer and is correct
+    pub fn verify(&self, env: &RoundEnv) -> Result<(), MevBooTEEError> {
+        // recover public key bls from signature
+        // check public key belongs to current proposer
+        // check the partial block header is valid
         // check proposer is enrolled in EigenLayer and can be slashed
         todo!()
     }

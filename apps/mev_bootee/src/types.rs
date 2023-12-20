@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 pub const MAX_GAS_COST: u32 = 3_000_000;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct Transaction {
     pub raw: String,
     pub estimated_gas_cost: u32,
@@ -31,7 +31,12 @@ impl Bundle {
     }
 
     pub fn contains_transaction(&self, t: &Transaction) -> bool {
-        todo!()
+        for txn in &self.txns {
+            if txn == t {
+                return true;
+            }
+        }
+        return false
     }
 }
 
@@ -53,13 +58,15 @@ pub struct ExecutionState {
 
 }
 
+#[derive(Debug, thiserror::Error)]
 pub enum MevBooTEEError {
-    IllegalBundle
+    #[error("bad signed header object: {0}")]
+    BadSignedHeader(String)
 }
 
 #[derive(Clone, Deserialize)]
 pub enum PartialBlockBuildingMode {
     BuilderProposes,
     ProposerProposes,
-    ProposerChosesWhoProposes
+    ProposerChooses
 }
