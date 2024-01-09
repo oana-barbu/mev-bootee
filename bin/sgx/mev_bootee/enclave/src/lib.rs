@@ -8,7 +8,7 @@
 #[macro_use]
 extern crate sgxlib as std;
 
-use app_mev_bootee::{MevBooTEE, GreedyOrderFlow, PartialBlockBuildingMode};
+use app_mev_bootee::{MevBooTEE, GreedyBlockBuildingStrategy, PartialBlockBuildingMode};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::prelude::v1::*;
@@ -18,7 +18,7 @@ use std::sync::Mutex;
 
 lazy_static::lazy_static! {
     static ref PARTIAL_BLOCK_BUILDING_MODE: Mutex<Option<PartialBlockBuildingMode>> = Mutex::new(None);
-    static ref APP: MevBooTEE<GreedyOrderFlow> = {
+    static ref APP: MevBooTEE<GreedyBlockBuildingStrategy> = {
         let mode = match &*PARTIAL_BLOCK_BUILDING_MODE.lock().unwrap() {
             Some(m) => m.clone(),
             None => panic!("partial block building mode must be set!"),

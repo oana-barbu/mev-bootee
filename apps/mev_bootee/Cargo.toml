@@ -20,14 +20,16 @@ eth_types = { git = "https://github.com/automata-network/eth-types-rs", default-
 jsonrpc = { git = "https://github.com/automata-network/jsonrpc-rs", default-features = false }
 base = { git = "https://github.com/automata-network/base-rs", default-features = false }
 crypto = { git = "https://github.com/automata-network/crypto-rs", default-features = false }
-statedb = { git = "https://github.com/automata-network/statedb-rs", default-features = false }
+statedb = { git = "https://github.com/automata-network/statedb-rs", branch = "v2", default-features = false, features = [ "tstd" ] }
 net-http = { git = "https://github.com/automata-network/net-http-rs", default-features = false }
 #block_builder = { git = "https://github.com/automata-network/tee-builder", default-features = false, features = [ "tstd" ] }
-thiserror             = { git = "https://github.com/mesalock-linux/thiserror-sgx" }
+thiserror = { git = "https://github.com/mesalock-linux/thiserror-sgx" }
 blst = { version = "0.3", default-features = false }
 #zeroize = { version = "=1.6" }
 #hex = { version = "0.4", default-features = false, features = ["alloc"] }
 evm-executor = { git = "https://github.com/automata-network/evm-executor-rs.git", default-features = false, features = [ "tstd" ] }
+eth-tools = { git = "https://github.com/automata-network/eth-tools-rs.git", default-features = false, features = [ "tstd" ] }
+mpt = { git = "https://github.com/automata-network/mpt-rs.git", default-features = false, features = [ "tstd" ] }
 
 serde = { git = "https://github.com/automata-network/sgxlib-thirdparty", default-features = false }
 serde_json = { git = "https://github.com/automata-network/sgxlib-thirdparty", default-features = false }

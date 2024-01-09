@@ -5,9 +5,9 @@ use std::sync::{Arc, mpsc::{channel, Sender}, Mutex};
 use serde::{Deserialize, Serialize};
 use jsonrpc::{JsonrpcErrorObj, RpcArgs};
 
-use eth_types::{BlockHeader, Block};
+use eth_types::{BlockHeader, Block, Transaction};
 
-use crate::{Bid, RoundEnv, Transaction, MevBooTEEError};
+use crate::{Bid, RoundEnv, MevBooTEEError, BlockBuildingStrategy};
 
 #[derive(Deserialize)]
 pub struct SubmitBundleRequest {
@@ -16,7 +16,7 @@ pub struct SubmitBundleRequest {
 }
 
 impl SubmitBundleRequest {
-    pub fn verify(&self, env: &RoundEnv) -> bool {
+    pub fn verify<T: BlockBuildingStrategy>(&self, env: &RoundEnv<T>) -> bool {
         todo!()
     }
 
@@ -31,7 +31,7 @@ pub struct GetBlockOfferRequest {
 }
 
 impl GetBlockOfferRequest {
-    pub fn verify(&self, env: &RoundEnv) -> bool {
+    pub fn verify<T: BlockBuildingStrategy>(&self, env: &RoundEnv<T>) -> bool {
         // verify that the requester is the block proposer for this round
         // + other possible verifications
         todo!()
@@ -60,7 +60,7 @@ pub struct SignedHeader {
 }
 
 impl SignedHeader {
-    pub fn verify(&self, env: &RoundEnv) -> Result<(), MevBooTEEError> {
+    pub fn verify<T: BlockBuildingStrategy>(&self, env: &RoundEnv<T>) -> Result<(), MevBooTEEError> {
         // recover public key from bls signature
         // check public key belongs to current proposer
         // check the header is valid
@@ -75,7 +75,7 @@ pub struct SignedPartialBlockHeader {
 }
 
 impl SignedPartialBlockHeader {
-    pub fn verify(&self, env: &RoundEnv) -> Result<(), MevBooTEEError> {
+    pub fn verify<T: BlockBuildingStrategy>(&self, env: &RoundEnv<T>) -> Result<(), MevBooTEEError> {
         // recover public key bls from signature
         // check public key belongs to current proposer
         // check the partial block header is valid

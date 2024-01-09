@@ -51,15 +51,17 @@ dependencies = [
  "base",
  "blst 0.3.6",
  "crypto",
+ "eth-tools",
  "eth_types",
  "evm-executor",
  "glog",
  "jsonrpc",
+ "mpt",
  "net-http",
  "serde 0.1.0",
  "serde_json 0.1.0",
  "sgxlib",
- "statedb 0.1.0 (git+https://github.com/automata-network/statedb-rs)",
+ "statedb",
  "thiserror 1.0.9",
 ]
 
@@ -558,6 +560,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "eth-tools"
+version = "0.1.0"
+source = "git+https://github.com/automata-network/eth-tools-rs.git#a22afe828942782c29023c16ec8767ae4aacdb89"
+dependencies = [
+ "base",
+ "eth_types",
+ "glog",
+ "jsonrpc",
+ "net-http",
+ "serde 0.1.0",
+ "serde_json 0.1.0",
+ "sgxlib",
+]
+
+[[package]]
 name = "eth_types"
 version = "0.1.0"
 source = "git+https://github.com/automata-network/eth-types-rs#dec2edca92565ecd5679a4ced3d1edce899ffaad"
@@ -650,7 +667,7 @@ dependencies = [
 [[package]]
 name = "evm-executor"
 version = "0.1.0"
-source = "git+https://github.com/automata-network/evm-executor-rs.git#293fee8a7100907d2cd997d56cd97c600a7829a3"
+source = "git+https://github.com/automata-network/evm-executor-rs.git#4c8c627365355276fd6d50b39b1324940ce788c5"
 dependencies = [
  "base",
  "crypto",
@@ -659,11 +676,12 @@ dependencies = [
  "glog",
  "lazy_static",
  "num-bigint 0.1.0",
+ "num-traits 0.1.0",
  "ripemd160",
  "rlp",
  "rlp-derive",
  "sgxlib",
- "statedb 0.1.0 (git+https://github.com/automata-network/statedb-rs?branch=v2)",
+ "statedb",
  "substrate-bn",
 ]
 
@@ -1129,6 +1147,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpt"
+version = "0.1.0"
+source = "git+https://github.com/automata-network/mpt-rs.git#7dabb93e09471a6406285b184dceb9f89a6630a0"
+dependencies = [
+ "base",
+ "crypto",
+ "eth-tools",
+ "eth_types",
+ "glog",
+ "lazy_static",
+ "rlp",
+ "rlp-derive",
+ "sgxlib",
+ "statedb",
+]
+
+[[package]]
 name = "net"
 version = "0.1.0"
 source = "git+https://github.com/automata-network/net-rs#a8fe7a20d6c0c5ceb483162bc5ad12649501daa6"
@@ -1212,7 +1247,7 @@ dependencies = [
 [[package]]
 name = "num-bigint"
 version = "0.1.0"
-source = "git+https://github.com/automata-network/sgxlib-thirdparty#997ca529ec5283788854d54b579b643eec10ba4a"
+source = "git+https://github.com/automata-network/sgxlib-thirdparty#58058f9442900ada805cbda3e174be803491a4ba"
 dependencies = [
  "num-bigint 0.2.5",
 ]
@@ -1236,6 +1271,14 @@ dependencies = [
  "autocfg 0.1.8",
  "num-traits 0.2.10",
  "sgx_tstd",
+]
+
+[[package]]
+name = "num-traits"
+version = "0.1.0"
+source = "git+https://github.com/automata-network/sgxlib-thirdparty#58058f9442900ada805cbda3e174be803491a4ba"
+dependencies = [
+ "num-traits 0.2.10",
 ]
 
 [[package]]
@@ -2060,7 +2103,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 [[package]]
 name = "statedb"
 version = "0.1.0"
-source = "git+https://github.com/automata-network/statedb-rs?branch=v2#5d46719cf4de16306444ae5b4283680553bf3e46"
+source = "git+https://github.com/automata-network/statedb-rs?branch=v2#1558a6722866fe766f0eb4160ca6216eceb60e0d"
 dependencies = [
  "base",
  "crypto",
@@ -2070,20 +2113,6 @@ dependencies = [
  "rlp",
  "rlp-derive",
  "serde 0.1.0",
- "sgxlib",
-]
-
-[[package]]
-name = "statedb"
-version = "0.1.0"
-source = "git+https://github.com/automata-network/statedb-rs#8b9c004c1abcd81be68012b91a78c8ff2da968a2"
-dependencies = [
- "base",
- "crypto",
- "eth_types",
- "glog",
- "lazy_static",
- "rlp",
  "sgxlib",
 ]
 
