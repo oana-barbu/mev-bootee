@@ -5,35 +5,17 @@ use std::sync::{Arc, mpsc::{channel, Sender}, Mutex};
 use serde::{Deserialize, Serialize};
 use jsonrpc::{JsonrpcErrorObj, RpcArgs};
 
-use eth_types::{BlockHeader, Block};
-
-use crate::{Bid, RoundEnv, Transaction};
+use eth_types::{BlockHeader, Block, Transaction};
 
 #[derive(Deserialize)]
-pub struct SubmitBundleRequest {
+pub struct SubmitToBRequest {
     pub txns: Vec<String>,
-    pub bid: Bid
+    pub bid: u32,
+    pub block_number: u32
 }
 
-impl SubmitBundleRequest {
-    pub fn verify(&self, env: &RoundEnv) -> bool {
-        todo!()
-    }
-
-    pub fn into_tarnsactions(&self) -> Vec<Transaction> {
-        todo!()
-    }
-}
-
-#[derive(Deserialize)]
-pub struct GetBlockOfferRequest {
-    pub txns: Vec<String>,
-}
-
-impl GetBlockOfferRequest {
-    pub fn verify(&self, env: &RoundEnv) -> bool {
-        // verify that the requester is the block proposer for this round
-        // + other possible verifications
+impl SubmitToBRequest {
+    pub fn verify(&self) -> bool {
         todo!()
     }
 
@@ -42,89 +24,81 @@ impl GetBlockOfferRequest {
     }
 }
 
-#[derive(Serialize)]
-pub struct BlockHeaderOffer {
-
+#[derive(Deserialize)]
+pub struct GetBidRequest {
+    pub txn_list: Vec<String>,
+    pub block_number: u32,
+    pub signature: Vec<u8>
 }
 
-impl BlockHeaderOffer {
-    pub fn new(header: &BlockHeader) -> Self {
+impl GetBidRequest {
+    // check if sender is current proposer
+    pub fn validate_sender(&self) -> bool {
+        todo!()
+    }
+
+    pub fn into_transactions(&self) -> Vec<Transaction> {
         todo!()
     }
 }
 
 #[derive(Deserialize)]
 pub struct SignedHeader {
-
+    pub header: BlockHeader,
+    pub signature: Vec<u8>
 }
 
 impl SignedHeader {
-    pub fn verify(&self, env: &RoundEnv) -> bool {
-        // check signature belongs to proposer and is correct
-        todo!()
-    }
-}
-
-#[derive(Deserialize)]
-pub struct SignedPartialBlockHeader {
-
-}
-
-impl SignedPartialBlockHeader {
-    pub fn verify(&self, env: &RoundEnv) -> bool {
-        // check signature belongs to proposer and is correct
-        // check proposer is enrolled in EigenLayer and can be slashed
+    // check if sender is current proposer
+    pub fn validate_sender(&self) -> bool {
         todo!()
     }
 }
 
 pub enum JsonRpcServerMsg {
-    SubmitBundle(SubmitBundleRequest, Sender<Result<String, JsonrpcErrorObj>>),
-    CancelBundle(String, Sender<bool>),
-    GetBlockOffer(GetBlockOfferRequest, Sender<Result<BlockHeaderOffer, JsonrpcErrorObj>>),
-    SubmitSignedHeader(SignedHeader, Sender<Result<bool, JsonrpcErrorObj>>),
-    SubmitSignedPartialBlockHeader(SignedPartialBlockHeader, Sender<Result<Block, JsonrpcErrorObj>>)
+    SubmitToB(SubmitToBRequest, Sender<Result<String, JsonrpcErrorObj>>),
+    RetractToB(String, Sender<bool>),
+    GetBid(GetBidRequest, Sender<Result<(u32, BlockHeader), JsonrpcErrorObj>>),
+    CommitHeader(SignedHeader, Sender<Result<bool, JsonrpcErrorObj>>)
 }
 
-pub struct MevBooTEEAPI {
+pub struct MevBooTeeAPI {
     pub sender: Arc<Mutex<Sender<JsonRpcServerMsg>>>
 }
 
-impl MevBooTEEAPI {
-    pub fn submit_bundle(&self, args: RpcArgs<SubmitBundleRequest>) -> Result<String, JsonrpcErrorObj> {
+impl MevBooTeeAPI {
+    pub fn echo(&self, args: RpcArgs<String>) -> Result<String, JsonrpcErrorObj> {
+        let req = args.params;
+        Ok(req)
+    }
+
+    pub fn submit_tob(&self, args: RpcArgs<SubmitToBRequest>) -> Result<String, JsonrpcErrorObj> {
         let req = args.params;
         let (sender, receiver) = channel();
-        self.sender.lock().unwrap().send(JsonRpcServerMsg::SubmitBundle(req, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
+        self.sender.lock().unwrap().send(JsonRpcServerMsg::SubmitToB(req, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
         receiver.recv().map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?
     }
 
-    pub fn cancel_bundle(&self, args: RpcArgs<String>) -> Result<bool, JsonrpcErrorObj> {
-        let bundle_id = args.params;
+    pub fn retract_tob(&self, args: RpcArgs<String>) -> Result<bool, JsonrpcErrorObj> {
+        let tob_id = args.params;
         let (sender, receiver) = channel();
-        self.sender.lock().unwrap().send(JsonRpcServerMsg::CancelBundle(bundle_id, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
+        self.sender.lock().unwrap().send(JsonRpcServerMsg::RetractToB(tob_id, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
         let removed = receiver.recv().map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
         Ok(removed)
     }
 
-    pub fn get_block_offer(&self, args: RpcArgs<GetBlockOfferRequest>) -> Result<BlockHeaderOffer, JsonrpcErrorObj> {
-        // TODO: here, the argument could be signed and we could verify if the submitter is indeed the block proposer
-        let request = args.params;
+    pub fn get_highest_bid(&self, args: RpcArgs<GetBidRequest>) -> Result<(u32, BlockHeader), JsonrpcErrorObj> {
+        let req = args.params;
         let (sender, receiver) = channel();
-        self.sender.lock().unwrap().send(JsonRpcServerMsg::GetBlockOffer(request, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
+        self.sender.lock().unwrap().send(JsonRpcServerMsg::GetBid(req, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
         receiver.recv().map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?
     }
 
-    pub fn submit_signed_header(&self, args: RpcArgs<SignedHeader>) -> Result<bool, JsonrpcErrorObj> {
+
+    pub fn commit_header(&self, args: RpcArgs<SignedHeader>) -> Result<bool, JsonrpcErrorObj> {
         let signed_header = args.params;
         let (sender, receiver) = channel();
-        self.sender.lock().unwrap().send(JsonRpcServerMsg::SubmitSignedHeader(signed_header, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
-        receiver.recv().map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?
-    }
-
-    pub fn commit_to_partial_block(&self, args: RpcArgs<SignedPartialBlockHeader>) -> Result<Block, JsonrpcErrorObj> {
-        let signed_pbh = args.params;
-        let (sender, receiver) = channel();
-        self.sender.lock().unwrap().send(JsonRpcServerMsg::SubmitSignedPartialBlockHeader(signed_pbh, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
+        self.sender.lock().unwrap().send(JsonRpcServerMsg::CommitHeader(signed_header, sender)).map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?;
         receiver.recv().map_err(|_| JsonrpcErrorObj::unknown("unresponsive"))?
     }
 }

@@ -49,16 +49,20 @@ version = "0.1.0"
 dependencies = [
  "apps",
  "base",
- "block_builder",
+ "blst 0.3.6",
  "crypto",
+ "eth-tools",
  "eth_types",
+ "evm-executor",
  "glog",
  "jsonrpc",
+ "mpt",
  "net-http",
  "serde 0.1.0",
  "serde_json 0.1.0",
  "sgxlib",
  "statedb",
+ "thiserror 1.0.9",
 ]
 
 [[package]]
@@ -230,24 +234,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 
 [[package]]
-name = "block_builder"
-version = "0.1.0"
-source = "git+https://github.com/automata-network/tee-builder#3c248b08e3b0e9ac840193ed0a4f0dda25dccab9"
+name = "blst"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f073f59a150a1dca74aab43d794ae5a7578d52bb1e73121e559f3ee3e6a837e"
 dependencies = [
- "base",
- "crypto",
- "eth_client",
- "eth_types",
- "evm_executor",
- "glog",
- "jsonrpc",
- "net-http",
- "serde 0.1.0",
- "serde_json 0.1.0",
- "sgxlib",
- "statedb",
- "threadpool 0.1.0",
- "txpool",
+ "cc",
+ "glob",
+ "threadpool 1.8.1",
+ "zeroize",
 ]
 
 [[package]]
@@ -385,7 +380,7 @@ version = "0.1.0"
 source = "git+https://github.com/automata-network/crypto-rs#0af04da3e5dc86dd918345592d8f2edb283fe5a0"
 dependencies = [
  "aes-gcm",
- "blst",
+ "blst 0.3.10",
  "curve25519-dalek 2.1.3",
  "hex 0.1.0",
  "primitive-types 0.9.1",
@@ -457,9 +452,9 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "3.2.1"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90f9d052967f590a76e62eb387bd0bbb1b000182c3cefe5364db6b7211651bc0"
+checksum = "0b9fdf9972b2bd6af2d913799d9ebc165ea4d2e65878e329d9c6b372c4491b61"
 dependencies = [
  "byteorder",
  "digest 0.9.0",
@@ -565,19 +560,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "eth_client"
+name = "eth-tools"
 version = "0.1.0"
-source = "git+https://github.com/automata-network/tee-builder#3c248b08e3b0e9ac840193ed0a4f0dda25dccab9"
+source = "git+https://github.com/automata-network/eth-tools-rs.git#a22afe828942782c29023c16ec8767ae4aacdb89"
 dependencies = [
  "base",
- "bytes 0.1.0",
- "crypto",
  "eth_types",
  "glog",
  "jsonrpc",
  "net-http",
- "rlp",
- "rlp-derive",
  "serde 0.1.0",
  "serde_json 0.1.0",
  "sgxlib",
@@ -674,6 +665,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "evm-executor"
+version = "0.1.0"
+source = "git+https://github.com/automata-network/evm-executor-rs.git#4c8c627365355276fd6d50b39b1324940ce788c5"
+dependencies = [
+ "base",
+ "crypto",
+ "eth_types",
+ "evm",
+ "glog",
+ "lazy_static",
+ "num-bigint 0.1.0",
+ "num-traits 0.1.0",
+ "ripemd160",
+ "rlp",
+ "rlp-derive",
+ "sgxlib",
+ "statedb",
+ "substrate-bn",
+]
+
+[[package]]
 name = "evm-gasometer"
 version = "0.37.0"
 source = "git+https://github.com/automata-network/evm-rs#c3bee6f18be73c8e6654a1c2afd3b0b218742470"
@@ -692,24 +704,6 @@ dependencies = [
  "evm-core",
  "primitive-types 0.9.1",
  "sha3 0.10.8",
-]
-
-[[package]]
-name = "evm_executor"
-version = "0.1.0"
-source = "git+https://github.com/automata-network/tee-builder#3c248b08e3b0e9ac840193ed0a4f0dda25dccab9"
-dependencies = [
- "base",
- "crypto",
- "eth_client",
- "eth_types",
- "evm",
- "glog",
- "num-bigint 0.1.0",
- "ripemd160",
- "sgxlib",
- "statedb",
- "substrate-bn",
 ]
 
 [[package]]
@@ -809,6 +803,12 @@ dependencies = [
  "opaque-debug 0.3.0",
  "polyval",
 ]
+
+[[package]]
+name = "glob"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 
 [[package]]
 name = "glog"
@@ -1147,6 +1147,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpt"
+version = "0.1.0"
+source = "git+https://github.com/automata-network/mpt-rs.git#7dabb93e09471a6406285b184dceb9f89a6630a0"
+dependencies = [
+ "base",
+ "crypto",
+ "eth-tools",
+ "eth_types",
+ "glog",
+ "lazy_static",
+ "rlp",
+ "rlp-derive",
+ "sgxlib",
+ "statedb",
+]
+
+[[package]]
 name = "net"
 version = "0.1.0"
 source = "git+https://github.com/automata-network/net-rs#a8fe7a20d6c0c5ceb483162bc5ad12649501daa6"
@@ -1230,7 +1247,7 @@ dependencies = [
 [[package]]
 name = "num-bigint"
 version = "0.1.0"
-source = "git+https://github.com/automata-network/sgxlib-thirdparty#997ca529ec5283788854d54b579b643eec10ba4a"
+source = "git+https://github.com/automata-network/sgxlib-thirdparty#58058f9442900ada805cbda3e174be803491a4ba"
 dependencies = [
  "num-bigint 0.2.5",
 ]
@@ -1254,6 +1271,14 @@ dependencies = [
  "autocfg 0.1.8",
  "num-traits 0.2.10",
  "sgx_tstd",
+]
+
+[[package]]
+name = "num-traits"
+version = "0.1.0"
+source = "git+https://github.com/automata-network/sgxlib-thirdparty#58058f9442900ada805cbda3e174be803491a4ba"
+dependencies = [
+ "num-traits 0.2.10",
 ]
 
 [[package]]
@@ -2046,7 +2071,7 @@ name = "ssz"
 version = "0.2.0"
 source = "git+https://github.com/automata-network/sgxlib-thirdparty#997ca529ec5283788854d54b579b643eec10ba4a"
 dependencies = [
- "blst",
+ "blst 0.3.10",
  "bm-le",
  "generic-array 0.14.7",
  "lazy_static",
@@ -2078,7 +2103,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 [[package]]
 name = "statedb"
 version = "0.1.0"
-source = "git+https://github.com/automata-network/statedb-rs#8b9c004c1abcd81be68012b91a78c8ff2da968a2"
+source = "git+https://github.com/automata-network/statedb-rs?branch=v2#1558a6722866fe766f0eb4160ca6216eceb60e0d"
 dependencies = [
  "base",
  "crypto",
@@ -2086,6 +2111,8 @@ dependencies = [
  "glog",
  "lazy_static",
  "rlp",
+ "rlp-derive",
+ "serde 0.1.0",
  "sgxlib",
 ]
 
@@ -2279,21 +2306,6 @@ checksum = "a1631b201eb031b563d2e85ca18ec8092508e262a3196ce9bd10a67ec87b9f5c"
 dependencies = [
  "hash-db",
  "rlp",
-]
-
-[[package]]
-name = "txpool"
-version = "0.1.0"
-source = "git+https://github.com/automata-network/tee-builder#3c248b08e3b0e9ac840193ed0a4f0dda25dccab9"
-dependencies = [
- "base",
- "crypto",
- "eth_types",
- "glog",
- "rlp",
- "rlp-derive",
- "serde 0.1.0",
- "sgxlib",
 ]
 
 [[package]]
@@ -2564,20 +2576,20 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "x25519-dalek"
-version = "1.2.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2392b6b94a576b4e2bf3c5b2757d63f10ada8020a2e4d08ac849ebcf6ea8e077"
+checksum = "5a0c105152107e3b96f6a00a65e86ce82d9b125230e1c4302940eca58ff71f4f"
 dependencies = [
- "curve25519-dalek 3.2.1",
+ "curve25519-dalek 3.2.0",
  "rand_core 0.5.1",
  "zeroize",
 ]
 
 [[package]]
 name = "zeroize"
-version = "1.3.0"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4756f7db3f7b5574938c3eb1c117038b8e07f95ee6718c0efad4ac21508f1efd"
+checksum = "2a0956f1ba7c7909bfb66c2e9e4124ab6f6482560f6628b5aaeba39207c9aad9"
 dependencies = [
  "zeroize_derive",
 ]

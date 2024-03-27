@@ -4,66 +4,71 @@ use apps::AppEnv;
 use base::trace::Alive;
 
 use jsonrpc::{RpcServer, JsonrpcErrorObj, RpcServerConfig};
-use std::sync::mpsc::{Sender, channel, Receiver};
-use eth_types::Block;
+use std::sync::mpsc::{Sender, channel, Receiver, TryRecvError};
+use eth_types::{Block, BlockHeader, Transaction, SH256};
+use eth_tools::{ExecutionClient, MixRpcClient};
 
 use std::sync::Arc;
+use std::collections::BTreeMap;
+use crate::{GetBidRequest, MevBooTeeMode, SignedHeader};
 
-use crate::{OrderFlow, MevBooTEEAPI, JsonRpcServerMsg, SubmitBundleRequest, BlockHeaderOffer, SignedHeader, GetBlockOfferRequest, PartialBlockBuildingMode, SignedPartialBlockHeader};
+use crate::{MevBooTeeAPI, JsonRpcServerMsg, SubmitToBRequest};
 
-type Validator = String; // TODO
-
-pub struct MevBooTEE<T: OrderFlow> {
+pub struct MevBooTee {
     pub alive: Alive,
+    el: Arc<ExecutionClient<Arc<MixRpcClient>>>,
     pub srv_receiver: Mutex<Receiver<JsonRpcServerMsg>>,
     pub srv_sender: Arc<Mutex<Sender<JsonRpcServerMsg>>>,
-    pub order_flow: Mutex<T>,
-    pub mode: PartialBlockBuildingMode
+    state: Mutex<State>,
+    pub mode: MevBooTeeMode,
+    pub do_verification: bool
 }
 
-pub struct RoundEnv {
-    pub base_fee: u32,
-    pub proposer: Validator,
-}
-
-impl<T: OrderFlow> MevBooTEE<T> {
-    pub fn new(mode: PartialBlockBuildingMode) -> Self {
+impl Default for MevBooTee {
+    fn default() -> Self {
         let (sender, receiver) = channel();
-        let es = todo!();
+        let alive = Alive::new();
+        let mut client = MixRpcClient::new(None);
+        client
+            .add_endpoint(&alive, &["http://localhost:8545".to_owned()])
+            .unwrap();
+        let el: Arc<ExecutionClient<Arc<MixRpcClient>>> = Arc::new(ExecutionClient::new(Arc::new(client)));
         Self {
-            alive: Alive::new(),
+            alive,
             srv_receiver: Mutex::new(receiver),
             srv_sender: Arc::new(Mutex::new(sender)),
-            order_flow: Mutex::new(T::new(es)),
-            mode: mode,
+            state: Mutex::new(State::default()),
+            mode: MevBooTeeMode::Assembler,
+            do_verification: false,
+            el,
         }
     }
+}
 
-    fn init_round(&self) -> RoundEnv {
-        todo!()
+impl MevBooTee {
+    pub fn config(&mut self, mode: MevBooTeeMode, do_verification: bool) {
+        self.mode = mode;
+        self.do_verification = do_verification;
     }
 
-    fn build_round(&self, alive: Alive) {
-        let round_env = self.init_round();
-        while alive.is_alive() {
-            let msg = self.srv_receiver.lock().unwrap().recv();
+    fn run(&self) {
+        while self.alive.is_alive() {
+            let msg = self.srv_receiver.lock().unwrap().try_recv();
             match msg {
                 Ok(msg) => {
                     match msg {
-                        JsonRpcServerMsg::SubmitBundle(bundle, sender) => self.handle_submit_bundle_request(bundle, sender, &round_env),
-                        JsonRpcServerMsg::CancelBundle(bundle_id, sender) => self.handle_cancel_bundle_request(&bundle_id, sender),
-                        JsonRpcServerMsg::GetBlockOffer(request, sender) => self.handle_get_block_offer(request, sender, &round_env),
-                        JsonRpcServerMsg::SubmitSignedHeader(signed_header, sender) => self.handle_submit_signed_header(signed_header, sender, &round_env),
-                        JsonRpcServerMsg::SubmitSignedPartialBlockHeader(signed_partial_block_header, sender) => self.handle_submit_signed_partial_block_header(signed_partial_block_header, sender, &round_env),
+                        JsonRpcServerMsg::SubmitToB(req, sender) => self.handle_submit_tob_request(req, sender),
+                        JsonRpcServerMsg::RetractToB(req, sender) => self.handle_retract_tob_request(&req, sender),
+                        JsonRpcServerMsg::GetBid(req, sender) => self.handle_get_bid_request(req, sender),
+                        JsonRpcServerMsg::CommitHeader(signed_header, sender) => self.handle_commit_header_request(&signed_header, sender),
                     }
                 },
-                Err(e) => glog::error!("Error reading message from server: {:?}", e),
+                Err(e) =>
+                    if e != TryRecvError::Empty {
+                        glog::error!("Error reading message from server: {:?}", e)
+                    },
             }
         }
-    }
-
-    fn get_round_deadline(&self) -> Alive {
-        todo!()
     }
 
     pub fn start(&self) {
@@ -72,26 +77,19 @@ impl<T: OrderFlow> MevBooTEE<T> {
         let rpc_srv_handle = base::thread::spawn("jsonrpc-server".into(), {
             let mut cfg = RpcServerConfig::default();
             cfg.listen_addr = "0.0.0.0:1234".into();
-            let context = Arc::new(MevBooTEEAPI{sender: self.srv_sender.clone()});
-            let mut srv = RpcServer::<MevBooTEEAPI>::new(self.alive.clone(), cfg, context).unwrap();
-            srv.jsonrpc("submit_bundle", MevBooTEEAPI::submit_bundle);
-            srv.jsonrpc("cancel_bundle", MevBooTEEAPI::cancel_bundle);
-            srv.jsonrpc("get_block_offer", MevBooTEEAPI::get_block_offer);
+            let context = Arc::new(MevBooTeeAPI{sender: self.srv_sender.clone()});
+            let mut srv = RpcServer::<MevBooTeeAPI>::new(self.alive.clone(), cfg, context).unwrap();
             match self.mode {
-                PartialBlockBuildingMode::BuilderProposes => {
-                    // proposer signs the header and lets the builder propose the block
-                    srv.jsonrpc("submit_signed_header", MevBooTEEAPI::submit_signed_header);
+                MevBooTeeMode::ProposerAide => todo!(),
+                MevBooTeeMode::BuilderAide => todo!(),
+                MevBooTeeMode::Assembler => {
+                    srv.jsonrpc("echo", MevBooTeeAPI::echo);
+                    srv.jsonrpc("submit_tob", MevBooTeeAPI::submit_tob);
+                    srv.jsonrpc("retract_tob", MevBooTeeAPI::retract_tob);
+                    srv.jsonrpc("get_highest_bid", MevBooTeeAPI::get_highest_bid);
+                    srv.jsonrpc("commit_header", MevBooTeeAPI::commit_header);
                 },
-                PartialBlockBuildingMode::ProposerProposes => {
-                    // proposer commits to the partial block built by BooTEE
-                    srv.jsonrpc("commit_to_partial_block", MevBooTEEAPI::commit_to_partial_block);
-                },
-                PartialBlockBuildingMode::ProposerChosesWhoProposes => {
-                    // the proposer can choose whether to sign the header and let the builder propose
-                    // or commit to the partial block built by the builder
-                    srv.jsonrpc("submit_signed_header", MevBooTEEAPI::submit_signed_header);
-                    srv.jsonrpc("commit_to_partial_block", MevBooTEEAPI::commit_to_partial_block);
-                },
+                MevBooTeeMode::FullTeeBuilder => todo!(),
             }
             
             move || {
@@ -99,113 +97,102 @@ impl<T: OrderFlow> MevBooTEE<T> {
             }
         });
 
-        while self.alive.is_alive() {
-            let alive = self.get_round_deadline();
-            self.build_round(alive);
-        }
+        self.run();
 
         rpc_srv_handle.join().expect("failed to join RPC server");
     }
 
-    fn handle_submit_bundle_request(&self, bundle_request: SubmitBundleRequest, sender: Sender<Result<String, JsonrpcErrorObj>>, env: &RoundEnv) {
-        if !bundle_request.verify(env) {
-            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: bundle param invalid".into()))) {
-                glog::error!("unable to send on channel back: {:?}", e);
-            }
-            return;
-        }
-        let transactions = bundle_request.into_tarnsactions();
-        let bundle = match self.order_flow.lock().unwrap().create_bundle(transactions) {
-            Ok(bundle) => bundle,
-            Err(e) => {
-                if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: invalid bundle".into()))) {
-                    glog::error!("unable to send on channel back: {:?}", e);
+    fn handle_submit_tob_request(&self, tob_request: SubmitToBRequest, sender: Sender<Result<String, JsonrpcErrorObj>>) {
+        if self.do_verification {
+            if !tob_request.verify() {
+                if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: ToB is invalid".into()))) {
+                    glog::error!("unable to send back on channel: {:?}", e);
                 }
-                return
+                return;
             }
-        };
+        }
+
         let mut random = [0_u8; 32];
         crypto::read_rand(&mut random);
-        let bundle_id = std::str::from_utf8(&random[..]).unwrap();
-        if let Err(e) = sender.send(Ok(bundle_id.into())) {
-            glog::error!("unable to send bundle_id back: {:?}", e);
-            return; // the request cannot be completed so it's pointless to add the bundle
+        let tob_id = std::str::from_utf8(&random[..]).unwrap();
+
+        let mut state = self.state.lock().unwrap();
+        state.tobs.insert(tob_id.into(), (tob_request.bid, tob_request.txns));
+        if let Err(e) = sender.send(Ok(tob_id.into())) {
+            glog::error!("unable to send tob_id back: {:?}", e);
         }
-        self.order_flow.lock().unwrap().add_bundle(bundle_id.into(), bundle)
     }
 
-    fn handle_cancel_bundle_request(&self, bundle_id: &String, sender: Sender<bool>) {
-        let removed = self.order_flow.lock().unwrap().remove_bundle(bundle_id);
+    fn handle_retract_tob_request(&self, tob_id: &String, sender: Sender<bool>) {
+        let removed = match self.state.lock().unwrap().tobs.remove(tob_id) {
+            Some(_) => true,
+            None => false,
+        };
         if let Err(e) = sender.send(removed) {
             glog::error!("unable to send on channel back: {:?}", e);
         }
     }
 
-    fn handle_get_block_offer(&self, request: GetBlockOfferRequest, sender: Sender<Result<BlockHeaderOffer, JsonrpcErrorObj>>, env: &RoundEnv) {
-        if !request.verify(env) {
-            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: get block offer request invalid".into()))) {
-                glog::error!("unable to send on channel back: {:?}", e);
+    fn handle_get_bid_request(&self, get_bid_request: GetBidRequest, sender: Sender<Result<(u32, BlockHeader), JsonrpcErrorObj>>) {
+        if !get_bid_request.validate_sender() {
+            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad sender".into()))) {
+                glog::error!("unable to send back on channel: {:?}", e);
             }
             return;
         }
-        let transactions = request.into_transactions();
-        match self.order_flow.lock().unwrap().create_bundle(transactions.clone()) {
-            Ok(_) => {},
-            Err(e) => {
-                if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: invalid bundle".into()))) {
-                    glog::error!("unable to send on channel back: {:?}", e);
+
+        let mut rob = get_bid_request.txn_list.clone();
+        let tobs = self.state.lock().unwrap().tobs.clone();
+        let (tob_id, (bid, tob_txns)) = tobs.iter().max_by_key(|f| f.1.0).unwrap();
+        let mut block = tob_txns.clone();
+        if self.do_verification {
+            // prepare execution (although, tob is already verified so maybe we can optimize this step)
+            todo!();
+        }
+
+        for txn in rob {
+            if !block.contains(&txn) {
+                if self.do_verification {
+                    todo!();
+                    // skip this txn if the execution fails
+                    // if txn is correct, update bid to take into account this txn
                 }
-                return
+                block.push(txn);
             }
-        };
-        self.order_flow.lock().unwrap().add_inclusion_list(transactions);
-        let header = self.order_flow.lock().unwrap().get_block_header();
-        let offer = BlockHeaderOffer::new(&header);
-        if let Err(e) = sender.send(Ok(offer)) {
-            glog::error!("unable to send offer: {:?}", e);
+        }
+
+        let (bid, header) = todo!();
+        if let Err(e) = sender.send(Ok((bid, header))) {
+            glog::error!("unable to send back on channel: {:?}", e);
         }
     }
 
-    fn handle_submit_signed_header(&self, signed_header: SignedHeader, sender: Sender<Result<bool, JsonrpcErrorObj>>, env: &RoundEnv) {
-        // we release the block ourselves
-        if !signed_header.verify(env) {
-            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: submit signed header invalid".into()))) {
-                glog::error!("unable to send on channel back: {:?}", e);
+    fn handle_commit_header_request(&self, signed_header: &SignedHeader, sender: Sender<Result<bool, JsonrpcErrorObj>>) {
+        if !signed_header.validate_sender() {
+            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad sender".into()))) {
+                glog::error!("unable to send back on channel: {:?}", e);
             }
             return;
         }
-        let ret = self.release_block();
-        if let Err(e) = sender.send(Ok(ret)) {
-            glog::error!("unable to send on channel: {:?}", e);
-        }
-    }
 
-    fn handle_submit_signed_partial_block_header(&self, signed_partial_block_header: SignedPartialBlockHeader, sender: Sender<Result<Block, JsonrpcErrorObj>>, env: &RoundEnv) {
-        // we return block to proposer
-        if !signed_partial_block_header.verify(env) {
-            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Bad request: submit signed partial block header invalid".into()))) {
-                glog::error!("unable to send on channel back: {:?}", e);
+        let hash = signed_header.header.hash();
+
+        let state = self.state.lock().unwrap();
+        if let Some(block) = self.state.lock().unwrap().blocks.get(&hash) {
+            let published = todo!();
+            if let Err(e) = sender.send(Ok(published)) {
+                glog::error!("unable to send back on channel: {:?}", e);
             }
-            return;
+        } else {
+            if let Err(e) = sender.send(Err(JsonrpcErrorObj::client("Unknown header".into()))) {
+                glog::error!("unable to send back on channel: {:?}", e);
+            }
         }
-        let block = self.get_block();
-        if let Err(e) = sender.send(Ok(block)) {
-            glog::error!("unable to send on channel: {:?}", e);
-        }
-    }
-
-    fn release_block(&self) -> bool {
-        todo!()
-    }
-
-    fn get_block(&self) -> Block {
-        todo!()
     }
 }
 
-impl<T: OrderFlow> apps::App for MevBooTEE<T> {
+impl apps::App for MevBooTee {
     fn run(&self, args: AppEnv) -> Result<(), String> {
-        glog::info!("running app");
         self.start();
         Ok(())
     }
@@ -213,5 +200,16 @@ impl<T: OrderFlow> apps::App for MevBooTEE<T> {
     fn terminate(&self) {
         glog::info!("terminate MevBooTEE");
         self.alive.shutdown();
+    }
+}
+
+struct State {
+    tobs: BTreeMap<String, (u32, Vec<String>)>,
+    blocks: BTreeMap<SH256, Block>
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self { tobs: BTreeMap::new(), blocks: BTreeMap::new() }
     }
 }
