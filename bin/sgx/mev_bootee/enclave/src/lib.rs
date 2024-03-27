@@ -8,7 +8,7 @@
 #[macro_use]
 extern crate sgxlib as std;
 
-use app_mev_bootee::{MevBooTEE, GreedyBlockBuildingStrategy, PartialBlockBuildingMode};
+use app_mev_bootee::{MevBooTee, MevBooTeeMode};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::prelude::v1::*;
@@ -17,14 +17,7 @@ use std::sgx_types::sgx_status_t;
 use std::sync::Mutex;
 
 lazy_static::lazy_static! {
-    static ref PARTIAL_BLOCK_BUILDING_MODE: Mutex<Option<PartialBlockBuildingMode>> = Mutex::new(None);
-    static ref APP: MevBooTEE<GreedyBlockBuildingStrategy> = {
-        let mode = match &*PARTIAL_BLOCK_BUILDING_MODE.lock().unwrap() {
-            Some(m) => m.clone(),
-            None => panic!("partial block building mode must be set!"),
-        };
-        MevBooTEE::new(mode)
-    };
+    static ref APP: MevBooTee = MevBooTee::default();
 }
 
 #[no_mangle]
@@ -33,8 +26,10 @@ pub unsafe extern "C" fn enclave_entrypoint(eid: u64, args: *const c_char) -> sg
     glog::info!("Initialize Enclave!");
 
     let args = apps::parse_args(args);
-    let mode = todo!(); // get mode from args
-    *PARTIAL_BLOCK_BUILDING_MODE.lock().unwrap() = Some(mode);
+    // let mode = MevBooTeeMode::Assembler;
+    // let do_verification = true; // TODO: do we need this?
+    // let mut app = APP.lock().unwrap();
+    // app.config(mode, do_verification);
     match apps::run_enclave(&APP, eid, args) {
         Ok(()) => sgx_status_t::SGX_SUCCESS,
         Err(err) => err,

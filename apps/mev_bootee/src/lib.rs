@@ -10,9 +10,6 @@ pub use apps;
 mod app;
 pub use app::*;
 
-mod block_building;
-pub use block_building::*;
-
 mod types;
 pub use types::*;
 

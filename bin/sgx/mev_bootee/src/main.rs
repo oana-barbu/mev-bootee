@@ -19,6 +19,7 @@ fn main() {
     let args = serde_json::to_string(&args).unwrap();
     let args_ptr = CString::new(args.as_str()).unwrap();
     apps::set_ctrlc({
+        glog::info!("setting ctrl+c");
         let enclave = enclave.clone();
         move || {
             unsafe_ecall!(enclave.eid(), enclave_terminate()).unwrap();
